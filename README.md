@@ -98,3 +98,7 @@ Implementação inicial para homologação, não sistema de produção certifica
 ## Atualização 1.0.1
 
 Correção das inscrições Realtime em src/main.js. Para instalações existentes, não execute novamente o SQL; preserve as variáveis de ambiente. Atualize os arquivos e confirme o deploy.
+
+
+## Versão 1.0.3
+Para instalação e atualização, consulte [ATUALIZACAO-V103.md](ATUALIZACAO-V103.md). A instrução nova substitui o fluxo de cadastro por e-mail descrito anteriormente.
