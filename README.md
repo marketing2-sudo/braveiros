@@ -94,3 +94,7 @@ No Perfil há botão Instalar aplicativo (quando suportado) e Alternar tema. No 
 ## Estado da entrega
 
 Implementação inicial para homologação, não sistema de produção certificado. Sintaxe JavaScript verificada por Node e cinco testes isolados aprovados (`npm test`). Não foi possível instalar dependências no cache npm deste ambiente; portanto build Vite, SQL em PostgreSQL real, testes de RLS, testes visuais e envio real de push permanecem pendentes. Não foi realizada publicação em GitHub, Vercel ou Supabase. A lista de conteúdo está limitada a 500 publicações/solicitações e 100 notificações por consulta; gestão de colaboradores até 1000 registros. Ainda não há busca/paginação abrangente, administração por departamento, SSO, upload de documentos, auditoria completa, relatórios avançados ou segmentação de comunicados. O curso é um catálogo com progresso simples, e a Ouvidoria não substitui canal institucional regulamentado. Nenhum dado real foi pré-cadastrado.
+
+## Atualização 1.0.1
+
+Correção das inscrições Realtime em src/main.js. Para instalações existentes, não execute novamente o SQL; preserve as variáveis de ambiente. Atualize os arquivos e confirme o deploy.

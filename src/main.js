@@ -41,4 +41,56 @@ app.addEventListener('click',async e=>{const b=e.target.closest('[data-action]')
 app.addEventListener('change',e=>{if(e.target.id==='admin-kind'){adminKind=e.target.value;editId=null;render()}});
 app.addEventListener('submit',async e=>{e.preventDefault();const f=e.target;if(loading)return;loading=true;const d=Object.fromEntries(new FormData(f)),b=f.querySelector('button[type=submit],button:not([type])');if(b)b.disabled=true;try{if(f.id==='auth-form'){if(f.dataset.signup==='true'){check(await db.auth.signUp({email:d.email,password:d.password,options:{data:{name:d.name,department:d.department},emailRedirectTo:location.origin}}));if(!user)toast('Cadastro enviado. Confirme seu e-mail e aguarde aprovação.')}else check(await db.auth.signInWithPassword({email:d.email,password:d.password}));}else if(f.id==='password-form'){check(await db.auth.updateUser({password:d.password}));await load();toast('Senha atualizada.')}else if(f.id==='post-form'){let extra={};for(const [k] of fields[adminKind]||[])if(d[k])extra[k]=k==='choices'?d[k].split('\n').map(s=>s.trim()).filter(Boolean):d[k];if(adminKind==='polls'&&(!extra.choices||new Set(extra.choices).size<2||new Set(extra.choices).size!==extra.choices.length))throw Error('Inclua pelo menos duas opções diferentes.');const row={kind:adminKind,title:d.title,body:d.body,extra,published:d.published==='on'};const p=check(await (editId?db.from('posts').update(row).eq('id',editId):db.from('posts').insert(row)).select().single());editId=null;await load();toast('Conteúdo salvo.');if(p.published&&['notice','news'].includes(p.kind)){const {data:{session}}=await db.auth.getSession();fetch('/api/push',{method:'POST',headers:{Authorization:'Bearer '+session.access_token}}).catch(()=>{});}}else if(f.id==='request-form'){check(await db.from('requests').insert({kind:f.dataset.kind,title:d.title,body:d.body}));await load();toast('Solicitação enviada.')}else if(f.classList.contains('reply-form')){check(await db.from('requests').update({status:d.status,response:d.response}).eq('id',f.dataset.id));await load();toast('Atendimento atualizado.')}else if(f.classList.contains('person-form')){check(await db.from('profiles').update({role:d.role,active:d.active==='on'}).eq('id',f.dataset.id));await load();toast('Acesso atualizado.')}}catch(e){toast(e.message)}finally{loading=false;if(b)b.disabled=false}});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e});if(localStorage.getItem('br-theme')==='dark')document.documentElement.classList.add('dark');if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});setInterval(()=>{if(user&&profile?.active&&!carouselPaused&&notices().length>1&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&!document.querySelector('#carousel')?.matches(':hover,:focus-within')){slide=(slide+1)%notices().length;refreshBanner()}},6000);
-if(db){db.auth.onAuthStateChange((event,session)=>{setTimeout(async()=>{if(event==='PASSWORD_RECOVERY'){user=session.user;app.innerHTML=`<div class="center"><form id="password-form" class="card form-card"><h1>Nova senha</h1><label>Senha<input name="password" type="password" minlength="8" required></label><button class="primary">Salvar senha</button></form></div>`;return}if(['TOKEN_REFRESHED','SIGNED_IN'].includes(event)&&user?.id===session?.user?.id&&profile)return;authEpoch++;user=session?.user;profile=null;posts=[];requests=[];notifications=[];votes=[];progress=[];people=[];results={};editId=null;page='home';if(subscriptionChannel){db.removeChannel(subscriptionChannel);subscriptionChannel=null}if(user){try{await load();subscriptionChannel=db.channel('braveiros-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'notifications',filter:'user_id=eq.'+user.id},async()=>{try{notifications=check(await db.from('notifications').select('*').order('created_at',{ascending:false}).limit(100));const count=document.querySelector('.header-actions .count');if(count)count.textContent=notifications.filter(n=>!n.read).length;if(!document.querySelector('form'))await load()}catch{}}).subscribe()}catch(e){toast(e.message)}}else render()},0)});}else authScreen();
+// Serializa eventos de autenticação e mantém somente um canal por sessão.
+let authQueue = Promise.resolve();
+async function handleAuth(event, session) {
+  const nextUser = session?.user;
+  if (event === 'PASSWORD_RECOVERY') {
+    authEpoch++;
+    if (subscriptionChannel) {
+      const old = subscriptionChannel;
+      subscriptionChannel = null;
+      await db.removeChannel(old);
+    }
+    user = nextUser;
+    profile = null;
+    app.innerHTML = `<div class="center"><form id="password-form" class="card form-card"><h1>Nova senha</h1><label>Senha<input name="password" type="password" minlength="8" required></label><button class="primary">Salvar senha</button></form></div>`;
+    return;
+  }
+  if (['TOKEN_REFRESHED','SIGNED_IN','INITIAL_SESSION'].includes(event) && nextUser && user?.id === nextUser.id && profile && subscriptionChannel) return;
+  const epoch = ++authEpoch;
+  if (subscriptionChannel) {
+    const old = subscriptionChannel;
+    subscriptionChannel = null;
+    await db.removeChannel(old);
+  }
+  user = nextUser; profile = null;
+  posts=[]; requests=[]; notifications=[]; votes=[]; progress=[]; people=[];
+  results={}; editId=null; page='home';
+  if (!user) { render(); return; }
+  await load();
+  if (epoch !== authEpoch || !profile?.active) return;
+  const uid = user.id;
+  // Tópico único evita reutilizar um canal ainda em encerramento.
+  const channel = db.channel('braveiros-' + uid + '-' + epoch);
+  channel.on('postgres_changes', {event:'*',schema:'public',table:'notifications',filter:'user_id=eq.'+uid}, async () => {
+    if (epoch !== authEpoch || subscriptionChannel !== channel || user?.id !== uid) return;
+    try {
+      const rows = check(await db.from('notifications').select('*').order('created_at',{ascending:false}).limit(100));
+      if (epoch !== authEpoch || subscriptionChannel !== channel) return;
+      notifications = rows;
+      const count = document.querySelector('.header-actions .count');
+      if (count) count.textContent = notifications.filter(n=>!n.read).length;
+      if (!document.querySelector('form')) await load();
+    } catch (e) { console.warn('Braveiros Realtime:', e.message); }
+  });
+  subscriptionChannel = channel;
+  channel.subscribe();
+}
+if (db) {
+  db.auth.onAuthStateChange((event, session) => {
+    setTimeout(() => {
+      authQueue = authQueue.then(() => handleAuth(event, session)).catch(e => toast(e.message));
+    }, 0);
+  });
+} else authScreen();
