@@ -10,12 +10,12 @@ export default async function handler(req,res){
  const auth=createClient(e.VITE_SUPABASE_URL,e.VITE_SUPABASE_PUBLISHABLE_KEY,opts);
  try{const b=typeof req.body==='string'?JSON.parse(req.body):req.body||{};
  if(b.action==='signup'){
-  const m=normalizeMatricula(b.matricula), password=b.password, contact=String(b.contact_email||'').trim();
+  const m=normalizeMatricula(b.matricula), password=b.password, contact=String(b.contact_email||'').trim(), name=String(b.name||'').trim(), department=String(b.department||'').trim();
+  if(name.length<2||name.length>120||department.length<1||department.length>120)return res.status(400).json({error:'Informe nome completo e departamento.'});
   if(typeof password!=='string'||password.length<8||password.length>128||contact.length>254||(contact&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)))return res.status(400).json({error:'Confira a senha e o e-mail informado.'});
-  const roster=await db.from('br_employees').select('matricula').eq('matricula',m).eq('active',true).maybeSingle();if(roster.error)throw roster.error;
   const existing=await db.from('profiles').select('id').eq('matricula',m).maybeSingle();if(existing.error)throw existing.error;
-  if(!roster.data||existing.data)return res.status(400).json({error:'Não foi possível solicitar cadastro. Confira a matrícula com o RH ou utilize o login se já possuir conta.'});
-  const r=await db.auth.admin.createUser({email:identityEmail(m),password,email_confirm:true,user_metadata:{matricula:m,contact_email:contact}});
+  if(existing.data)return res.status(400).json({error:'Não foi possível solicitar cadastro. Utilize o login se já possuir conta.'});
+  const r=await db.auth.admin.createUser({email:identityEmail(m),password,email_confirm:true,user_metadata:{matricula:m,contact_email:contact,name,department}});
   if(r.error){console.error('Braveiros cadastro',r.error.code||r.error.status);return res.status(r.error.status===429?429:400).json({error:'Cadastro não concluído. Verifique a matrícula com o RH ou solicite suporte à administração.'});}
   return res.status(201).json({success:true});
  }
