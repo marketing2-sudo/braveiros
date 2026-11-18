@@ -5,3 +5,5 @@ test('reads Excel CSV with BOM and semicolon',()=>assert.deepEqual(parseEmployee
 test('quoted comma and escaped quotes',()=>assert.equal(parseEmployees('matricula,nome,departamento\n1,"Ana, \"\"A\"\"",RH')[0].name,'Ana, "A"'));
 test('rejects duplicate IDs',()=>assert.throws(()=>parseEmployees('matricula;nome;departamento\n01;Ana;RH\n01;B;RH')));
 test('rejects missing fields',()=>assert.throws(()=>parseEmployees('matricula;nome;departamento\n01;Ana;')));
+
+test('optional CSV job preserves leading zeros',()=>{assert.deepEqual(parseEmployees('matricula;nome;departamento;cargo\n001;Ana;Marketing;Analista'),[{matricula:'001',name:'Ana',department:'Marketing',job_title:'Analista'}]);});
