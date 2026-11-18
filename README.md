@@ -13,3 +13,6 @@ Console: Braveiros 1.0.6 | Entrada revisada. O build não minifica para facilita
 
 ## Limites
 Não é possível saber se uma pessoa deslogada tem conta ativa antes de identificar sua matrícula; usamos o histórico local da apresentação. Não alteramos RLS ou API de identidade.
+
+## Release 1.0.6
+Correção de estabilidade e inicialização.
