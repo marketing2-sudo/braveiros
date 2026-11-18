@@ -25,7 +25,15 @@ function brand(){return `<span class="brand"><img src="/icon.svg" alt=""><span>b
 function splashScreen(){app.innerHTML=`<div class="splash-screen"><div class="splash-card">${brand()}<div class="loading-dots" role="status" aria-label="Carregando"><span></span><span></span><span></span></div></div></div>`}
 function onboardingScreen(){const t=onboardingSlides[entryStep],last=entryStep===onboardingSlides.length-1;app.innerHTML=`<div class="onboarding-shell"><section class="onboarding-stage" style="--slide-image:url('${esc(t.image)}')"><div class="onboarding-overlay"></div><div class="onboarding-top">${btn('Já tenho conta','onboarding-login','text-button light')}</div><div class="onboarding-body"><div class="onboarding-copy"><p class="eyebrow light">${esc(t.tag)}</p><h1>${esc(t.title)}</h1><p>${esc(t.body)}</p></div><div class="onboarding-bottom"><div class="auth-dots">${onboardingSlides.map((_,i)=>`<button type="button" class="auth-dot ${i===entryStep?'active':''}" data-action="onboarding-slide:${i}" aria-label="Slide ${i+1}"></button>`).join('')}</div><div class="onboarding-actions">${entryStep?btn('Voltar','onboarding-prev','secondary soft'):''}${btn(last?'Vamos começar':'Próximo',last?'onboarding-finish':'onboarding-next','primary')}</div></div></div></section></div>`;window.scrollTo(0,0)}
 function authScreen(signup=false){entryMode=signup?'signup':'login';app.innerHTML=`<div class="login-shell"><div class="login-wrap"><div class="login-head">${brand()}</div><div class="login-copy"><h1>${signup?'Crie sua conta':'Que bom ter você aqui.'}</h1><p class="muted">${signup?'Seu acesso será liberado pela administração.':'Entre com sua matrícula e senha.'}</p></div>${db?`<form id="auth-form" data-signup="${signup}">${signup?input('matricula','Número da matrícula','text','',true)+input('contact_email','E-mail de contato (opcional)','email'):input('login','Matrícula (ou e-mail de conta antiga)','text','',true)}<label>Senha<input name="password" type="password" minlength="8" maxlength="128" required autocomplete="${signup?'new-password':'current-password'}"></label><button class="primary">${signup?'Criar conta':'Entrar no portal'}</button></form><div class="auth-links">${btn(signup?'Já tenho conta':'Criar minha conta',signup?'login':'signup','text-button')}${signup?'':btn('Esqueci minha senha','reset','text-button')}</div>`:'<div class="empty">Configure as variáveis Supabase para começar.</div>'}</div></div>`;window.scrollTo(0,0)}
-function guestScreen(){if(booting)return splashScreen();if(entryMode==='signup')return authScreen(true);if(entryMode==='login'||localStorage.getItem('braveiros_onboarding_seen')==='true')return authScreen(false);entryMode='onboarding';return onboardingScreen()}
+function guestScreen() {
+    if (booting) return splashScreen();
+    if (entryMode === 'signup') return authScreen(true);
+    if (entryMode === 'login' || localStorage.getItem('braveiros_onboarding_seen') === 'true') {
+        return authScreen(false);
+    }
+    entryMode = 'onboarding';
+    return onboardingScreen();
+}
 
 async function load(){const epoch=authEpoch;const p=check(await db.from('profiles').select('*').eq('id',user.id).maybeSingle());if(epoch!==authEpoch)return;profile=p;if(!p?.active||p.must_change_password){render();return} const role=check(await db.rpc('br_role'));if(epoch!==authEpoch)return;if(!role){profile={...p,active:false};render();return}const fetches=await Promise.all([db.from('posts').select('*').order('created_at',{ascending:false}).limit(500),db.from('requests').select('*').order('created_at',{ascending:false}).limit(500),db.from('notifications').select('*').order('created_at',{ascending:false}).limit(100),db.from('votes').select('*'),db.from('progress').select('*'),staff()?db.from('profiles').select('*').order('name').limit(1000):Promise.resolve({data:[]})]);if(epoch!==authEpoch)return;[posts,requests,notifications,votes,progress,people]=fetches.map(check);employees=profile.role==='super_admin'?check(await db.from('br_employees').select('*').order('matricula').limit(1000)):[];if(epoch!==authEpoch)return;render()}
 function navItem(k,title,i){return `<button class="nav ${page===k?'selected':''}" data-action="nav:${k}">${icon(i)}<span>${esc(title)}</span></button>`}
@@ -82,6 +90,7 @@ async function handleAuth(event, session) {
   localStorage.setItem('braveiros_onboarding_seen','true');
   await load();
 }
+console.info('Braveiros v1.0.5.2 | Entry Fix');
 splashScreen();
 if (db) {
   db.auth.onAuthStateChange((event, session) => {
