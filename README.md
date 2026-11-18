@@ -1,13 +1,10 @@
-# Braveiros v1.0.4
+# Braveiros v1.0.5
 
-Atualização visual com nova paleta do Cana Brava, onboarding premium, responsividade refinada e correção do zoom em dispositivos móveis.
+Fluxo de entrada renovado com splash simples, onboarding separado do login e suporte a fotos próprias nos slides.
 
 ## Destaques
-- Nova UI/UX mobile e desktop
-- Tela inicial com onboarding em estilo app
-- Inputs com 16px para evitar zoom automático em celulares
-- Paleta oficial do Cana Brava aplicada ao projeto
+- Splash screen com logo e três pontos de carregamento
+- Onboarding separado com slides de fotos
+- Login limpo e independente
+- Onboarding exibido apenas para quem ainda não viu ou não possui conta ativa
 - Sem mudanças de banco de dados
-
-## Instalação
-Mesma instalação da v1.0.3. Basta substituir os arquivos do projeto.
