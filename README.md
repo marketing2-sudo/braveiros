@@ -1,21 +1,18 @@
-# Braveiros 1.0.9
+# Braveiros 1.1.0 | Social Experience
 
-Portal interno para a equipe do Cana Brava Resort.
+Portal interno dos colaboradores do Cana Brava Resort. Identidade visual neutra, com temas claro/escuro legíveis, feed social, Stories e carrossel de mídia.
 
-## Recursos
+## Capacidades
 
-- Feed social com publicações de Admin/Super Admin, curtidas, comentários e compartilhamento interno.
-- Sidebar no desktop e barra de navegação inferior no celular.
-- Login por matrícula e aprovação administrativa de novos cadastros.
-- Gestão de colaboradores, departamentos, cargos e permissões pelo Super Admin.
-- Notícias, comunicados, ônibus, cursos, cartilha, aniversariantes, eventos, SAC, Ouvidoria, sugestões, vagas e outros serviços.
-- Notificações web push, perfil, modo escuro e PWA.
+- Feed interno com publicações exclusivas de Admin/Super Admin, curtidas, comentários, compartilhamento e carrossel de até 10 mídias.
+- Stories (imagem/vídeo) com expiração de 24 horas e visualização por departamento.
+- Cadastro por matrícula, aprovação administrativa, gerenciamento de departamentos, cargos e colaboradores.
+- Serviços existentes: ônibus, treinamentos, cartilha, eventos, SAC, Ouvidoria, notificações, vagas e mais.
+- Interface adaptável a celular e desktop, PWA e modo escuro.
 
-## Publicar
+## Instalação / atualização
 
-Leia **ATUALIZACAO-V109.md** antes de alterar o sistema existente. Preserve o Supabase, as variáveis da Vercel e todos os arquivos de mídia. Execute a migração `supabase/v109.sql` antes de publicar o código atualizado.
-
-## Desenvolvimento
+**Leia `ATUALIZACAO-V110.md`.** Para atualizar a v1.0.9, execute `supabase/v110.sql` após backup e envie os arquivos do pacote de atualização para as pastas correspondentes na branch `main`.
 
 ```bash
 npm install
@@ -23,12 +20,4 @@ npm test
 npm run build
 ```
 
-Variáveis em `.env.example`. Nunca publique a chave de serviço do Supabase em código acessível pelo navegador.
-
-## Segurança
-
-Os privilégios são determinados pelo Supabase e não apenas pelos botões visíveis. Cadastros públicos permanecem pendentes até aprovação do Admin ou Super Admin. A confirmação de identidade com o RH continua necessária antes de aprovar uma conta.
-
-## Limitações
-
-O pacote foi validado com testes automatizados e renderização de prévia com dados fictícios. O build do Vite depende de `npm install`; a execução completa no Supabase e na Vercel requer validação no ambiente real.
+Variáveis de ambiente e configurações do Supabase são preservadas. Nunca envie o arquivo `.env` ou a chave `SUPABASE_SERVICE_ROLE_KEY` ao GitHub.
