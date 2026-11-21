@@ -2,12 +2,13 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import fs from 'node:fs';
+import {createHash} from 'node:crypto';
 import {normalizeMatricula,identityEmail} from '../src/identity.js';
 const source=fs.readFileSync(new URL('../api/identity.js',import.meta.url),'utf8').replace(/^import .*;\s*$/gm,'').replace('export default async function','async function');
-async function signup({roster=true,existing=false,password='Example!123',matricula='00123',error=null,name='Pessoa Teste',department='RH'}={}){
+async function signup({roster=true,existing=false,password='Example!123',matricula='00123',error=null,limitAllowed=true,gateError=null,name='Pessoa Teste',department='RH'}={}){
  let created,code,result;
- const db={from(table){const q={select(){return q},eq(){return q},async maybeSingle(){return {data:table==='br_employees'?(roster?{matricula}:null):(existing?{id:'old'}:null)}}};return q},auth:{admin:{async createUser(data){created=data;return {error,data:{user:{id:'new'}}}}}}};
- const context=vm.createContext({normalizeMatricula,identityEmail,createClient:()=>db,process:{env:{VITE_SUPABASE_URL:'mock',VITE_SUPABASE_PUBLISHABLE_KEY:'mock',SUPABASE_SERVICE_ROLE_KEY:'mock'}},console:{error(){}}});
+ const db={async rpc(name,params){assert.equal(name,'br_signup_gate');assert.match(params.p_fingerprint,/^[0-9a-f]{64}$/);return {data:limitAllowed,error:gateError};},from(table){const q={select(){return q},eq(){return q},async maybeSingle(){return {data:table==='br_employees'?(roster?{matricula}:null):(existing?{id:'old'}:null)}}};return q},auth:{admin:{async createUser(data){created=data;return {error,data:{user:{id:'new'}}}}}}};
+ const context=vm.createContext({normalizeMatricula,identityEmail,createHash,createClient:()=>db,process:{env:{VITE_SUPABASE_URL:'mock',VITE_SUPABASE_PUBLISHABLE_KEY:'mock',SUPABASE_SERVICE_ROLE_KEY:'mock'}},console:{error(){}}});
  vm.runInContext(source,context);
  const res={setHeader(){},status(n){code=n;return res},json(data){result=data;return res},end(){return res}};
  await context.handler({method:'POST',body:{action:'signup',matricula,password,contact_email:'',name,department},headers:{}},res);
@@ -20,3 +21,6 @@ test('short password never creates account',async()=>{const r=await signup({pass
 
 test('missing name is rejected',async()=>{const r=await signup({name:''});assert.equal(r.code,400);assert.equal(r.created,undefined);});
 test('missing department is rejected',async()=>{const r=await signup({department:''});assert.equal(r.code,400);assert.equal(r.created,undefined);});
+
+test('registration is blocked after the configured limit',async()=>{const r=await signup({limitAllowed:false});assert.equal(r.code,429);assert.equal(r.created,undefined);});
+test('registration fails closed when the rate limiter is unavailable',async()=>{const r=await signup({gateError:{code:'PGRST202'}});assert.equal(r.code,503);assert.equal(r.created,undefined);});

@@ -1,5 +1,5 @@
 import {createClient} from '@supabase/supabase-js';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,createHash} from 'node:crypto';
 import {normalizeMatricula,identityEmail} from '../src/identity.js';
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
@@ -13,6 +13,14 @@ export default async function handler(req,res){
   const m=normalizeMatricula(b.matricula), password=b.password, contact=String(b.contact_email||'').trim(), name=String(b.name||'').trim(), department=String(b.department||'').trim();
   if(name.length<2||name.length>120||department.length<1||department.length>120)return res.status(400).json({error:'Informe nome completo e departamento.'});
   if(typeof password!=='string'||password.length<8||password.length>128||contact.length>254||(contact&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)))return res.status(400).json({error:'Confira a senha e o e-mail informado.'});
+  // Limit registrations by network and matrícula. All identifiers are SHA-256 hashes.
+  const network=String(req.headers?.['x-vercel-forwarded-for']||req.headers?.['x-real-ip']||req.socket?.remoteAddress||'unknown').split(',')[0].trim();
+  const digest=value=>createHash('sha256').update(value).digest('hex');
+  for(const [key,limit] of [['ip:'+network,12],['matricula:'+m,4]]){
+   const gate=await db.rpc('br_signup_gate',{p_fingerprint:digest(key),p_limit:limit,p_window_minutes:60});
+   if(gate.error){console.error('Braveiros limite cadastro:',gate.error.code||gate.error.message);return res.status(503).json({error:'Cadastro temporariamente indisponível. Tente novamente mais tarde.'});}
+   if(!gate.data)return res.status(429).json({error:'Muitas tentativas de cadastro. Tente novamente mais tarde.'});
+  }
   const existing=await db.from('profiles').select('id').eq('matricula',m).maybeSingle();if(existing.error)throw existing.error;
   if(existing.data)return res.status(400).json({error:'Não foi possível solicitar cadastro. Utilize o login se já possuir conta.'});
   const r=await db.auth.admin.createUser({email:identityEmail(m),password,email_confirm:true,user_metadata:{matricula:m,contact_email:contact,name,department}});
